@@ -7,8 +7,8 @@ from GUI.utils import new_icon, label_validator, trimmed
 
 BB = QDialogButtonBox
 
-class LabelDialog(QDialog):
 
+class LabelDialog(QDialog):
     def __init__(self, id=0, text="Enter object label", parent=None, list_item=None):
         super(LabelDialog, self).__init__(parent)
 
@@ -38,7 +38,7 @@ class LabelDialog(QDialog):
         layout = QVBoxLayout()
         layout.addLayout(hLayoutId)
         layout.addLayout(hLayoutLabel)
-        
+
         if list_item is not None and len(list_item) > 0:
             self.list_widget = QListWidget(self)
             for item in list_item:
@@ -48,8 +48,8 @@ class LabelDialog(QDialog):
             layout.addWidget(self.list_widget)
 
         self.button_box = bb = BB(BB.Ok | BB.Cancel, Qt.Horizontal, self)
-        bb.button(BB.Ok).setIcon(new_icon('done'))
-        bb.button(BB.Cancel).setIcon(new_icon('undo'))
+        bb.button(BB.Ok).setIcon(new_icon("done"))
+        bb.button(BB.Cancel).setIcon(new_icon("undo"))
         bb.accepted.connect(self.validate)
         bb.rejected.connect(self.reject)
         layout.addWidget(bb)
@@ -63,7 +63,7 @@ class LabelDialog(QDialog):
     def post_process(self):
         self.edit.setText(trimmed(self.edit.text()))
 
-    def pop_up(self, id=0, text='', move=True):
+    def pop_up(self, id=0, text="", move=True):
         """
         Shows the dialog, setting the current text to `text`, and blocks the caller until the user has made a choice.
         If the user entered a label, that label is returned, otherwise (i.e. if the user cancelled the action)
@@ -76,15 +76,25 @@ class LabelDialog(QDialog):
         if move:
             cursor_pos = QCursor.pos()
             parent_bottom_right = self.parentWidget().geometry()
-            max_x = parent_bottom_right.x() + parent_bottom_right.width() - self.sizeHint().width()
-            max_y = parent_bottom_right.y() + parent_bottom_right.height() - self.sizeHint().height()
+            max_x = (
+                parent_bottom_right.x()
+                + parent_bottom_right.width()
+                - self.sizeHint().width()
+            )
+            max_y = (
+                parent_bottom_right.y()
+                + parent_bottom_right.height()
+                - self.sizeHint().height()
+            )
             max_global = self.parentWidget().mapToGlobal(QPoint(max_x, max_y))
             if cursor_pos.x() > max_global.x():
                 cursor_pos.setX(max_global.x())
             if cursor_pos.y() > max_global.y():
                 cursor_pos.setY(max_global.y())
             self.move(cursor_pos)
-        return trimmed(self.edit.text()) if self.exec_() else None, int(self.editId.text())
+        return trimmed(self.edit.text()) if self.exec_() else None, int(
+            self.editId.text()
+        )
 
     def list_item_click(self, t_qlist_widget_item):
         text = trimmed(t_qlist_widget_item.text())

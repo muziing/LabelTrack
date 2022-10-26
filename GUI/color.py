@@ -2,7 +2,6 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 
-
 PERSON_LINE_COLOR = QColor(41, 121, 255, 200)
 PERSON_FILL_COLOR = QColor(41, 121, 255, 128)
 
@@ -35,4 +34,3 @@ MOTOR_FILL_COLOR = QColor(255, 196, 0, 128)
 
 OTHER_LINE_COLOR = QColor(0, 0, 0, 200)
 OTHER_FILL_COLOR = QColor(0, 0, 0, 128)
-

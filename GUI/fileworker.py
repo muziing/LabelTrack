@@ -13,10 +13,10 @@ class fileWorker(QThread):
         super().__init__()
         self.path = None
         self.canvas = canvas
-    
+
     def load_path(self, path):
         self.path = path
-    
+
     def run(self):
         self.load_frames()
 
@@ -33,16 +33,16 @@ class fileWorker(QThread):
         else:
             self.canvas.imgFrames = []
             self.canvas.videoCapture = cv2.VideoCapture(self.path)
-            
+
             numFrames = self.canvas.videoCapture.get(7)
             rval = self.canvas.videoCapture.isOpened()
             i = 0
-            while rval: 
-                rval, frame = self.canvas.videoCapture.read()  
+            while rval:
+                rval, frame = self.canvas.videoCapture.read()
                 if rval:
                     self.canvas.imgFrames.append(frame)
                 if i % 30 == 0:
                     self.sinOut.emit("已加载图片帧 {} / {}".format(i, numFrames))
                 i += 1
-        
+
         self.sinOut.emit("图片帧已加载完成")

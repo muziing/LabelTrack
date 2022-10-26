@@ -1,31 +1,18 @@
-import os
-import sys
-import cv2
-import logging
 from multiprocessing import freeze_support
 
-from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5 import uic, QtGui, QtCore
-from PyQt5.QtGui import *
+from PyQt5 import uic
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import QVideoWidget
+from qt_material import QtStyleTools, apply_stylesheet
 
-from qt_material import apply_stylesheet, QtStyleTools, density
-
-from tools import img_cv_to_qt
-from label_combox import DefaultLabelComboBox
 # from frame import frame
-from canvas import canvas
-from zoomWidget import ZoomWidget
+from label_combox import DefaultLabelComboBox
+from load_worker import LoadWorker
 from utils import *
-from ustr import ustr
-from tqdm import tqdm
-from load_worker import loadWorker
+from zoomWidget import ZoomWidget
 
 # GPU渲染，加速
-if hasattr(Qt, 'AA_ShareOpenGLContexts'):
+if hasattr(Qt, "AA_ShareOpenGLContexts"):
     try:
         QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     except:
@@ -40,36 +27,36 @@ class MyWindow(QMainWindow, QtStyleTools):
     def __init__(self):
         super().__init__()
 
-        self = uic.loadUi('ui_window.ui', self)
-        self.setWindowTitle('Auto - LabelTrack')
-        
+        self = uic.loadUi("ui_window.ui", self)
+        self.setWindowTitle("Auto - LabelTrack")
+
         # 视频播放器
-        self.player = QMediaPlayer() 
+        self.player = QMediaPlayer()
         # TODO 自定义Widget
         self.videoWiget = QVideoWidget()  # 独立窗口播放视频
         self.videoWiget.setMinimumSize(800, 600)
         self.videoFileUrl = ""
         self.filePath = ""
-        self.labelPath = ""
+        self.label_path = ""
 
-        self.loadWorker = loadWorker(self.canvas)
-        self.loadWorker.sinOut.connect(self.update_load_status)
+        self.LoadWorker = LoadWorker(self.Canvas)
+        self.LoadWorker.sinOut.connect(self.update_load_status)
 
         # 状态栏
-        self.statusBar = self.statusBar() # 状态栏
+        self.statusBar = self.statusBar()  # 状态栏
         # Display cursor coordinates at the right of status bar
-        self.label_coordinates = QLabel('Hello')
+        self.label_coordinates = QLabel("Hello")
         self.statusBar.addPermanentWidget(self.label_coordinates)
 
         # 大小比例
         self.zoom_widget = ZoomWidget()
 
         # 按钮
-        self.pushButtonPlay.pressed.connect(self.video_play)  # 播放按钮
+        self.pushButtonPlay.pressed.connect(self.play_video)  # 播放按钮
         self.playTimer = QTimer(self)
         self.playTimer.timeout.connect(self.play_frame)
         self.isPlaying = False
-        
+
         # 工具栏
         self.actionFile.triggered.connect(self.open_file)  # 打开文件
         self.actionSave.triggered.connect(self.save_file)
@@ -84,33 +71,35 @@ class MyWindow(QMainWindow, QtStyleTools):
         self.actionFit.triggered.connect(self.adjust_scale)
         # 标签
         # TODO
-        self.labelHint = ['person', 'car']
+        self.labelHint = ["person", "car"]
         self.defaultLabel = self.labelHint[0]
-        self.labelCombobox = DefaultLabelComboBox(self, items = self.labelHint)
+        self.labelCombobox = DefaultLabelComboBox(self, items=self.labelHint)
         self.toolBarVertical.addWidget(self.labelCombobox)
         self.toolBarVertical.addAction(self.actionAnnot)
         self.toolBarVertical.addSeparator()
         self.toolBarVertical.addAction(self.actionTrack)
         self.actionAnnot.triggered.connect(self.set_create_mode)
-        self.actionTrack.triggered.connect(self.canvas.track_frame)  # 自动跟踪
+        self.actionTrack.triggered.connect(self.Canvas.track_frame)  # 自动跟踪
 
         # 输入帧数栏
         self.lineCurFrame.returnPressed.connect(self.jump_frame)
-        
+
         # 滑动条
         self.vedioSlider.setMinimum(1)
-        self.vedioSlider.sliderMoved.connect(self.move_slider) 
+        self.vedioSlider.sliderMoved.connect(self.move_slider)
         self.vedioSlider.valueChanged.connect(self.move_slider)
 
-        # canvas 信号
-        self.canvas.newShape.connect(self.new_shape)
+        # Canvas 信号
+        self.Canvas.newShape.connect(self.new_shape)
 
-        self.prev_label_text = ''
+        self.prev_label_text = ""
 
     # 打开文件
     def open_file(self):
-        self.filePath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "mp4 Video (*.mp4); files Directory(*.*)")
-        if self.filePath.endswith('.mp4'):
+        self.filePath, _ = QFileDialog.getOpenFileName(
+            self, "Open file", "", "mp4 Video (*.mp4); files Directory(*.*)"
+        )
+        if self.filePath.endswith(".mp4"):
             self.videoFileUrl = QUrl.fromLocalFile(self.filePath)
             # 初始化所有图像帧
             self.canvas.init_frame(self.filePath)
@@ -120,7 +109,14 @@ class MyWindow(QMainWindow, QtStyleTools):
             self.vedioSlider.setMaximum(self.canvas.numFrames)
 
     def open_dict(self):
-        target_dir_path = ustr(QFileDialog.getExistingDirectory(self, 'Open Directory', '.', QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
+        target_dir_path = ustr(
+            QFileDialog.getExistingDirectory(
+                self,
+                "Open Directory",
+                ".",
+                QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+            )
+        )
         self.canvas.init_frame(target_dir_path)
         self.adjust_scale()
         self.lineCurFrame.setText("1")
@@ -141,7 +137,9 @@ class MyWindow(QMainWindow, QtStyleTools):
     # 加载标注文件 .txt
     def load_file(self):
         self.statusBar.showMessage("正在加载标注文件，请稍后")
-        self.labelPath, _ = QFileDialog.getOpenFileName(self, "Choose annotation file", "", "txt(*.txt)")  
+        self.labelPath, _ = QFileDialog.getOpenFileName(
+            self, "Choose annotation file", "", "csv(*.csv)"
+        )
         self.loadWorker.load_path(self.labelPath)
         self.loadWorker.start()
 
@@ -164,11 +162,11 @@ class MyWindow(QMainWindow, QtStyleTools):
 
     # 播放视频
     def video_play(self):
-        # self.player.setVideoOutput(self.videoWiget)  
+        # self.player.setVideoOutput(self.videoWiget)
         # self.player.setMedia(QMediaContent(self.videoFileUrl))  # 选取视频文件
         # self.videoWiget.show()
         # self.player.play()
-        # self.canvas.curFramesId = 1
+        # self.Canvas.curFramesId = 1
         if self.isPlaying is False:
             self.isPlaying = True
             self.pushButtonPlay.setIcon(QIcon("resources/svg/stop.svg"))
@@ -183,7 +181,7 @@ class MyWindow(QMainWindow, QtStyleTools):
     def paint_canvas(self):
         # assert not self.image.isNull(), "cannot paint null image"
         self.canvas.scale = 0.01 * self.zoom_widget.value()
-        # self.canvas.label_font_size = int(0.02 * max(self.image.width(), self.image.height()))
+        # self.Canvas.label_font_size = int(0.02 * max(self.image.width(), self.image.height()))
         self.canvas.adjustSize()
         self.canvas.update()
 
@@ -230,14 +228,16 @@ class MyWindow(QMainWindow, QtStyleTools):
         text = self.defaultLabel
         self.prev_label_text = text
         generate_line_color, generate_fill_color = generate_color_by_text(text)
-        shape = self.canvas.set_last_label(text, generate_line_color, generate_fill_color)
+        shape = self.canvas.set_last_label(
+            text, generate_line_color, generate_fill_color
+        )
         # self.add_label(shape)
-        self.canvas.set_editing(True) # edit mode
+        self.canvas.set_editing(True)  # edit mode
         self.actionAnnot.setEnabled(True)
         # self.set_dirty() # 发生更新，可以保存
 
     def current_path(self):
-        return os.path.dirname(self.filePath) if self.filePath else '.'
+        return os.path.dirname(self.filePath) if self.filePath else "."
 
     def save_file(self):
         # image_file_dir = os.path.dirname(self.filePath)
@@ -245,26 +245,28 @@ class MyWindow(QMainWindow, QtStyleTools):
         # saved_file_name = os.path.splitext(image_file_name)[0]
         savedPath = self.save_file_dialog(remove_ext=False)
         self.save_labels(savedPath)
-    
+
     def save_file_dialog(self, remove_ext=True):
-        caption = 'Choose Path to save annotation'
-        filters = 'Files Directory(*.*)'
+        caption = "Choose Path to save annotation"
+        filters = "Files Directory(*.*)"
         # TODO
         open_dialog_path = self.current_path()
         dlg = QFileDialog(self, caption, open_dialog_path, filters)
         # dlg.setDefaultSuffix(LabelFile.suffix[1:])
         dlg.setAcceptMode(QFileDialog.AcceptSave)
-        filename = os.path.splitext(self.filePath)[0] + '.txt'
+        filename = os.path.splitext(self.filePath)[0] + ".txt"
         dlg.selectFile(filename)
         dlg.setOption(QFileDialog.DontUseNativeDialog, False)
         if dlg.exec_():
             full_file_path = ustr(dlg.selectedFiles()[0])
             if remove_ext:
-                return os.path.splitext(full_file_path)[0]  # Return file path without the extension.
+                return os.path.splitext(full_file_path)[
+                    0
+                ]  # Return file path without the extension.
             else:
                 return full_file_path
-        return ''
-        
+        return ""
+
     def save_labels(self, savedPath):
         results = []
         for shape in self.canvas.shapes:
@@ -282,7 +284,7 @@ class MyWindow(QMainWindow, QtStyleTools):
             results.append(
                 f"{shape.frameId},{shape.id},{min_x},{min_y},{w},{h},{shape.score:.2f},1,0,0\n"
             )
-        with open(savedPath, 'w') as f:
+        with open(savedPath, "w") as f:
             f.writelines(results)
             print(f"save results to {savedPath}")
 
@@ -302,8 +304,7 @@ class MyWindow(QMainWindow, QtStyleTools):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     MyWindow = MyWindow()
-    apply_stylesheet(app, theme='light_blue.xml', invert_secondary=True)
+    apply_stylesheet(app, theme="light_blue.xml", invert_secondary=True)
 
     MyWindow.showMaximized()
     sys.exit(app.exec_())
-

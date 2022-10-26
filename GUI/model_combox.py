@@ -2,6 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QComboBox
 
+
 class ModelComboBox(QWidget):
     def __init__(self, parent=None, items=[]):
         super(ModelComboBox, self).__init__(parent)

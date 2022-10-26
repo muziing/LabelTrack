@@ -1,15 +1,17 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
 import sys
 import torch
 import time
+
+from PyQt5.QtCore import QThread, pyqtSignal
+
 sys.path.append("./Tracking")
 from demo.bytetrack import frames_track, Predictor
 from yolox.exp import get_exp
 from yolox.utils import get_model_info
 from configs.configs import configs
 
-class trackWorker(QThread):
+
+class TrackWorker(QThread):
     sinOut = pyqtSignal(str)
 
     def __init__(self, canvas):
@@ -20,7 +22,7 @@ class trackWorker(QThread):
 
     def load_frames(self, imgframes):
         self.imgFrames = imgframes
-		
+
     def load_model(self, model):
         self.model = model
         print(self.model)
@@ -46,7 +48,7 @@ class trackWorker(QThread):
         model = exp.get_model().to(cfg.device)
         print("Model Summary: {}".format(get_model_info(model, exp.test_size)))
         model.eval()
-        
+
         # main()
         ckpt_file = cfg.ckpt
         print("loading checkpoint")
@@ -60,4 +62,6 @@ class trackWorker(QThread):
         trt_file = None
         decoder = None
         predictor = Predictor(model, exp, trt_file, decoder, cfg.device, cfg.fp16)
-        self.imgFrames = frames_track(exp, predictor, self.imgFrames, cfg, self.sinOut, self.canvas)
+        self.imgFrames = frames_track(
+            exp, predictor, self.imgFrames, cfg, self.sinOut, self.canvas
+        )

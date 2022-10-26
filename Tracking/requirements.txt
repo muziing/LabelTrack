@@ -44,6 +44,8 @@ yapf
 isort==4.3.21
 imageio
 
+cython_bbox
+pycocotools
 opencv-python-headless
 pyqt5
 qt-material

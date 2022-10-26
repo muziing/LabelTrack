@@ -5,7 +5,7 @@ experiment_name: AutoLabelTrack
 name: bytetrack_tiny_track
 exp_file: ./Tracking/exps/default/yolox_l.py
 ckpt: ./Tracking/weights/yolox_l_best_ckpt.pth.tar
-device: gpu
+device: cpu
 fps: 30
 track_thresh: 0.5
 track_buffer: 30

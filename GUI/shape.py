@@ -43,7 +43,7 @@ class Shape(object):
         self.selected = False
         self.difficult = difficult
         self.paint_label = paint_label
-        self.auto = 'M'
+        self.auto = "M"
 
         self._highlight_index = None
         self._highlight_mode = self.NEAR_VERTEX
@@ -103,7 +103,6 @@ class Shape(object):
             # may be desirable.
             # self.drawVertex(vertex_path, 0)
 
-            
             for i, p in enumerate(self.points):
                 line_path.lineTo(p)
                 if self._highlight_point:
@@ -145,11 +144,12 @@ class Shape(object):
             for p in self.points:
                 max_x = max(max_x, p.x())
                 max_y = max(max_y, p.y())
-            painter.fillRect(max_x - 12 * len(_id), max_y - 20, 12 * len(_id), 20, self.line_color)
+            painter.fillRect(
+                max_x - 12 * len(_id), max_y - 20, 12 * len(_id), 20, self.line_color
+            )
             painter.setPen(QColor(255, 255, 255, 255))
-            
-            
-            painter.drawText(int(max_x - 10*len(_id)), int(max_y - 5), _id)
+
+            painter.drawText(int(max_x - 10 * len(_id)), int(max_y - 5), _id)
             # print("points", self.points)
 
     def draw_vertex(self, path, i):
@@ -214,9 +214,9 @@ class Shape(object):
         shape.fill = self.fill
         shape.selected = self.selected
         shape._closed = self._closed
-        #if self.line_color != Shape.line_color:
+        # if self.line_color != Shape.line_color:
         shape.line_color = self.line_color
-        #if self.fill_color != Shape.fill_color:
+        # if self.fill_color != Shape.fill_color:
         shape.fill_color = self.fill_color
         shape.difficult = self.difficult
         shape.select_line_color = self.select_line_color

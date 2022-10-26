@@ -1,15 +1,11 @@
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
 import cv2
-from GUI.tools import img_cv_to_qt
-from GUI.trackworker import trackWorker
-from GUI.fileworker import fileWorker
-from GUI.shape import Shape
-from GUI.color import *
-from GUI.utils import *
 
+from GUI.fileworker import fileWorker
 from GUI.label_dialog import LabelDialog
+from GUI.shape import Shape
+from GUI.tools import img_cv_to_qt
+from GUI.trackworker import TrackWorker
+from GUI.utils import *
 
 CURSOR_DEFAULT = Qt.ArrowCursor
 CURSOR_POINT = Qt.PointingHandCursor
@@ -17,7 +13,8 @@ CURSOR_DRAW = Qt.CrossCursor
 CURSOR_MOVE = Qt.ClosedHandCursor
 CURSOR_GRAB = Qt.OpenHandCursor
 
-class canvas(QWidget):
+
+class Canvas(QWidget):
     newShape = pyqtSignal()
     drawingPolygon = pyqtSignal(bool)
     scrollRequest = pyqtSignal(int, int)
@@ -28,10 +25,10 @@ class canvas(QWidget):
     epsilon = 11.0
 
     def __init__(self, *args, **kwargs):
-        super(canvas, self).__init__(*args, **kwargs)
-        self.trackWorker = trackWorker(self) # 跟踪线程
+        super(Canvas, self).__init__(*args, **kwargs)
+        self.trackWorker = TrackWorker(self)  # 跟踪线程
         self.trackWorker.sinOut.connect(self.update_track_status)
-        self.fileWorker = fileWorker(self) # 导入文件线程
+        self.fileWorker = fileWorker(self)  # 导入文件线程
         self.fileWorker.sinOut.connect(self.update_file_status)
         self.fileWorker.finished.connect(self.load_frames)
 
@@ -65,7 +62,7 @@ class canvas(QWidget):
         # Set widget options.
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.WheelFocus)
-    
+
     def init_frame(self, path):
         # file worker 线程
         self.fileWorker.load_path(path)
@@ -73,8 +70,8 @@ class canvas(QWidget):
 
     # finish
     def load_frames(self):
-        self.trackWorker.load_frames(self.imgFrames) # 跟踪加载图片帧
-        self.numFrames = len(self.imgFrames) # 获取视频的总帧数
+        self.trackWorker.load_frames(self.imgFrames)  # 跟踪加载图片帧
+        self.numFrames = len(self.imgFrames)  # 获取视频的总帧数
         frame_0 = self.imgFrames[0]
         Qframe_0 = img_cv_to_qt(frame_0)
         self.load_pixmap(QPixmap.fromImage(Qframe_0))
@@ -114,11 +111,11 @@ class canvas(QWidget):
     def minimumSizeHint(self):
         if self.pixmap:
             return self.scale * self.pixmap.size()
-        return super(canvas, self).minimumSizeHint()
-    
+        return super(Canvas, self).minimumSizeHint()
+
     def offset_to_center(self):
         s = self.scale
-        area = super(canvas, self).size()
+        area = super(Canvas, self).size()
         w, h = self.pixmap.width() * s, self.pixmap.height() * s
         aw, ah = area.width(), area.height()
         x = (aw - w) / (2 * s) if aw > w else 0
@@ -150,19 +147,20 @@ class canvas(QWidget):
             newManualShape.frameId = i
             self.shapeId += 1
             newManualShape.id = self.shapeId
-            generate_line_color, generate_fill_color = generate_color_by_text(newManualShape.label)
+            generate_line_color, generate_fill_color = generate_color_by_text(
+                newManualShape.label
+            )
             newManualShape.line_color = generate_line_color
             newManualShape.fill_color = generate_fill_color
             self.shapes.append(newManualShape)
 
-        
         self.current = None
         newManualShape = None
         # self.set_hiding(False)
         self.newShape.emit()
         self.update()
 
-    def update_shape(self, id, frameId, cls_id, tlwh, score, auto = 'M'):
+    def update_shape(self, id, frameId, cls_id, tlwh, score, auto="M"):
         detectPos = Shape()
         detectPos.id = id
         detectPos.frameId = frameId
@@ -170,8 +168,16 @@ class canvas(QWidget):
         detectPos.label = label
         detectPos.score = score
         detectPos.auto = auto
-        generate_line_color, generate_fill_color = generate_color_by_text(detectPos.label)
-        self.set_shape_label(detectPos, detectPos.label, detectPos.id, generate_line_color, generate_fill_color)
+        generate_line_color, generate_fill_color = generate_color_by_text(
+            detectPos.label
+        )
+        self.set_shape_label(
+            detectPos,
+            detectPos.label,
+            detectPos.id,
+            generate_line_color,
+            generate_fill_color,
+        )
         leftTop = QPointF(tlwh[0], tlwh[1])
         rightTop = QPointF(tlwh[0] + tlwh[2], tlwh[1])
         rightDown = QPointF(tlwh[0] + tlwh[2], tlwh[1] + tlwh[3])
@@ -184,7 +190,7 @@ class canvas(QWidget):
                 clipped_y = min(max(0, pos.y()), size.height())
                 pos = QPointF(clipped_x, clipped_y)
             detectPos.add_point(pos)
-        
+
         detectPos.close()
         self.shapes.append(detectPos)
         detectPos = None
@@ -220,7 +226,7 @@ class canvas(QWidget):
             self.current.add_point(QPointF(max_x, min_y))
             self.current.add_point(target_pos)
             self.current.add_point(QPointF(min_x, max_y))
-            
+
             self.finalise()
         elif not self.out_of_pixmap(pos):
             self.current = Shape()
@@ -293,8 +299,10 @@ class canvas(QWidget):
             pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
         o2 = pos + self.offsets[1]
         if self.out_of_pixmap(o2):
-            pos += QPointF(min(0, self.pixmap.width() - o2.x()),
-                           min(0, self.pixmap.height() - o2.y()))
+            pos += QPointF(
+                min(0, self.pixmap.width() - o2.x()),
+                min(0, self.pixmap.height() - o2.y()),
+            )
         # The next line tracks the new position of the cursor
         # relative to the shape, but also results in making it
         # a bit "shaky" when nearing the border and allows it to
@@ -312,7 +320,7 @@ class canvas(QWidget):
             if self.h_shape:
                 self.h_shape.highlight_clear()
             self.h_vertex = self.h_shape = None
-            
+
     def de_select_shape(self):
         if self.selected_shape:
             self.selected_shape.selected = False
@@ -345,7 +353,7 @@ class canvas(QWidget):
                     self.calculate_offsets(shape, point)
                     return self.selected_shape
         return None
-    
+
     def selected_vertex(self):
         return self.h_vertex is not None
 
@@ -367,7 +375,7 @@ class canvas(QWidget):
             self.shapes[-1].fill_color = fill_color
 
         return self.shapes[-1]
-    
+
     def set_shape_label(self, shape, text, id, line_color=None, fill_color=None):
         shape.label = text
         shape.id = id
@@ -381,7 +389,7 @@ class canvas(QWidget):
 
     def paintEvent(self, event):
         if not self.pixmap:
-            return super(canvas, self).paintEvent(event)
+            return super(Canvas, self).paintEvent(event)
         p = self._painter
         p.begin(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -406,10 +414,10 @@ class canvas(QWidget):
             #     shape._highlight_point = shape == self.h_shape
             #     shape.paint(p)
             if shape.frameId == self.curFramesId:
-                shape.fill = shape.selected or shape == self.h_shape # 是否填充
+                shape.fill = shape.selected or shape == self.h_shape  # 是否填充
                 shape._highlight_point = shape == self.h_shape
                 shape.paint(p)
-               
+
         # 拖拽时显示矩形
         if self.current is not None and len(self.line) == 2:
             left_top = self.line[0]
@@ -419,16 +427,32 @@ class canvas(QWidget):
             p.setPen(self.drawing_rect_color)
             brush = QBrush(Qt.Dense7Pattern)
             p.setBrush(brush)
-            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
+            p.drawRect(
+                int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height)
+            )
 
         # 十字参考线
-        if self.drawing() and not self.prev_point.isNull() and not self.out_of_pixmap(self.prev_point):
+        if (
+            self.drawing()
+            and not self.prev_point.isNull()
+            and not self.out_of_pixmap(self.prev_point)
+        ):
             p.setPen(QColor(41, 121, 255))
-            p.drawLine(int(self.prev_point.x()), 0, int(self.prev_point.x()), int(self.pixmap.height()))
-            p.drawLine(0, int(self.prev_point.y()), int(self.pixmap.width()), int(self.prev_point.y()))
+            p.drawLine(
+                int(self.prev_point.x()),
+                0,
+                int(self.prev_point.x()),
+                int(self.pixmap.height()),
+            )
+            p.drawLine(
+                0,
+                int(self.prev_point.y()),
+                int(self.pixmap.width()),
+                int(self.prev_point.y()),
+            )
 
         p.end()
-    
+
     # TODO: 边界, self.window.label_coordinates
     def mouseMoveEvent(self, ev):
         """Update line with last point and current coordinates."""
@@ -436,10 +460,9 @@ class canvas(QWidget):
 
         # Update coordinates in status bar if image is opened
         if self.numFrames:
-            self.window.label_coordinates.setText(
-                'X: %d; Y: %d' % (pos.x(), pos.y()))
-    
-        if self.drawing(): # create mode
+            self.window.label_coordinates.setText("X: %d; Y: %d" % (pos.x(), pos.y()))
+
+        if self.drawing():  # create mode
             self.override_cursor(CURSOR_DRAW)
 
             if self.current:
@@ -447,7 +470,9 @@ class canvas(QWidget):
                 current_width = abs(self.current[0].x() - pos.x())
                 current_height = abs(self.current[0].y() - pos.y())
                 self.window.label_coordinates.setText(
-                        'Width: %d, Height: %d / X: %d; Y: %d' % (current_width, current_height, pos.x(), pos.y()))
+                    "Width: %d, Height: %d / X: %d; Y: %d"
+                    % (current_width, current_height, pos.x(), pos.y())
+                )
 
                 color = self.drawing_line_color
                 if self.out_of_pixmap(pos):
@@ -458,7 +483,7 @@ class canvas(QWidget):
                     clipped_x = min(max(0, pos.x()), size.width())
                     clipped_y = min(max(0, pos.y()), size.height())
                     pos = QPointF(clipped_x, clipped_y)
-                
+
                 self.line[1] = pos
                 self.line.line_color = color
                 self.prev_point = QPointF()
@@ -467,7 +492,7 @@ class canvas(QWidget):
                 self.prev_point = pos
             self.repaint()
             return
-        
+
         # Polygon/Vertex moving.
         if Qt.LeftButton & ev.buttons():
             if self.selected_vertex():
@@ -481,7 +506,9 @@ class canvas(QWidget):
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
                 self.window.label_coordinates.setText(
-                        'Width: %d, Height: %d / X: %d; Y: %d' % (current_width, current_height, pos.x(), pos.y()))
+                    "Width: %d, Height: %d / X: %d; Y: %d"
+                    % (current_width, current_height, pos.x(), pos.y())
+                )
 
             elif self.selected_shape and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
@@ -494,7 +521,9 @@ class canvas(QWidget):
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
                 self.window.label_coordinates.setText(
-                        'Width: %d, Height: %d / X: %d; Y: %d' % (current_width, current_height, pos.x(), pos.y()))
+                    "Width: %d, Height: %d / X: %d; Y: %d"
+                    % (current_width, current_height, pos.x(), pos.y())
+                )
             return
 
         # pixmap moving
@@ -507,7 +536,7 @@ class canvas(QWidget):
 
             return
 
-        # Just hovering over the canvas, 2 possibilities:
+        # Just hovering over the Canvas, 2 possibilities:
         # - Highlight shapes
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
@@ -532,7 +561,14 @@ class canvas(QWidget):
                     if self.selected_vertex():
                         self.h_shape.highlight_clear()
                     self.h_vertex, self.h_shape = None, shape
-                    tooltip = str(shape.label) + str(' ') + str(shape.id) + ' (' + shape.auto + ')'
+                    tooltip = (
+                        str(shape.label)
+                        + str(" ")
+                        + str(shape.id)
+                        + " ("
+                        + shape.auto
+                        + ")"
+                    )
                     self.setToolTip(tooltip)
                     self.setStatusTip("Click & drag to move rect")
                     self.override_cursor(CURSOR_GRAB)
@@ -543,9 +579,11 @@ class canvas(QWidget):
                     current_width = abs(point1.x() - point3.x())
                     current_height = abs(point1.y() - point3.y())
                     self.window.label_coordinates.setText(
-                            'Width: %d, Height: %d / X: %d; Y: %d' % (current_width, current_height, pos.x(), pos.y()))
+                        "Width: %d, Height: %d / X: %d; Y: %d"
+                        % (current_width, current_height, pos.x(), pos.y())
+                    )
                     break
-        
+
         else:  # Nothing found, clear highlights, reset state.
             if self.h_shape:
                 self.h_shape.highlight_clear()
@@ -586,13 +624,20 @@ class canvas(QWidget):
     def mouseDoubleClickEvent(self, ev):
         # 修改标签信息
         if self.selected_shape:
-            self.label_dialog = LabelDialog(parent=self, list_item=self.window.labelHint)
+            self.label_dialog = LabelDialog(
+                parent=self, list_item=self.window.labelHint
+            )
             for shape in reversed([s for s in self.shapes]):
                 if shape.selected and shape.frameId == self.curFramesId:
                     text, id = self.label_dialog.pop_up(id=shape.id, text=shape.label)
                     if text is not None:
-                        generate_line_color, generate_fill_color = generate_color_by_text(text)
-                        self.set_shape_label(shape, text, id, generate_line_color, generate_fill_color)
+                        (
+                            generate_line_color,
+                            generate_fill_color,
+                        ) = generate_color_by_text(text)
+                        self.set_shape_label(
+                            shape, text, id, generate_line_color, generate_fill_color
+                        )
                         break
         self.repaint()
 
